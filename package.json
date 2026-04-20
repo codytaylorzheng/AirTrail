@@ -129,6 +129,6 @@
     "zod": "^3.25.76"
   },
   "prisma": {
-    "seed": "bun ./prisma/seed"
+    "seed": "echo 'Skipping seed.'"
   }
 }
