@@ -32,10 +32,11 @@
 
   const { form: superForm }: { form: SuperForm<Infer<typeof airportSchema>> } = $props();
 
-  // Reference the stores directly from the superForm prop to keep them reactive
+  // Create local aliases for the stores to keep the template readable
   const formData = superForm.form;
   const errors = superForm.errors;
 
+  const unregisterPmtiles = browser ? registerPmtilesProtocol() : null;
   onDestroy(() => unregisterPmtiles?.());
 
   let map: maplibregl.Map | undefined = $state(undefined);
@@ -52,6 +53,7 @@
           lat: $formData.lat,
         },
   );
+
   const markLocation = (e: maplibregl.MapMouseEvent) => {
     marker = e.lngLat;
     const { lng, lat } = e.lngLat;
@@ -61,7 +63,7 @@
 
   const onDrag = (e: MarkerClickInfo) => {
     marker = e.lngLat;
-    const [lng, lat] = e.lngLat;
+    const { lng, lat } = e.lngLat;
     $formData.lon = lng;
     $formData.lat = lat;
   };
@@ -104,7 +106,7 @@
 {/if}
 
 <section class="grid grid-cols-1 gap-2 sm:grid-cols-2">
-  <Form.Field {form} name="country">
+  <Form.Field form={superForm} name="country">
     <Form.Control>
       {#snippet children({ props })}
         <Form.Label>Country *</Form.Label>
@@ -128,7 +130,7 @@
     </Form.Control>
     <Form.FieldErrors />
   </Form.Field>
-  <Form.Field {form} name="continent">
+  <Form.Field form={superForm} name="continent">
     <Form.Control>
       {#snippet children({ props })}
         <Form.Label>Continent *</Form.Label>
