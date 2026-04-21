@@ -27,7 +27,7 @@ async function runFix() {
         eb('tz', '=', ''),
         eb('tz', 'is', null)
       ]))
-      .limit(5000) // Chunking to prevent Render timeouts
+      .limit(15000) // Chunking to prevent Render timeouts
       .execute();
 
     if (airports.length === 0) {
