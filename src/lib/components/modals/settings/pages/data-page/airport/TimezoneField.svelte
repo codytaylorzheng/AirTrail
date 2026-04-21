@@ -10,9 +10,11 @@
   import { HelpTooltip } from '$lib/components/ui/tooltip/index.js';
   import type { airportSchema } from '$lib/zod/airport';
 
-  const { form }: { form: SuperForm<Infer<typeof airportSchema>> } = $props();
+  // 1. Accept the prop as 'superForm' to distinguish it from the store
+  const { form: superForm }: { form: SuperForm<Infer<typeof airportSchema>> } = $props();
 
-  const { form: formData } = form;
+  // 2. Reference the store directly (no destructuring)
+  const formData = superForm.form;
 
   const timezones = Intl.supportedValuesOf('timeZone');
 
@@ -32,6 +34,7 @@
     forceVisible: true,
     selected,
   });
+
   selected.subscribe((item) => {
     $formData.tz = item?.value ?? null;
   });
@@ -54,7 +57,7 @@
   });
 </script>
 
-<Form.Field {form} name="tz" class="flex flex-col">
+<Form.Field form={superForm} name="tz" class="flex flex-col">
   <Form.Control>
     {#snippet children({ props })}
       <Form.Label>Timezone *</Form.Label>
@@ -92,42 +95,3 @@
       <input hidden bind:value={$formData.tz} name={props.name} />
     {/snippet}
   </Form.Control>
-  {#if $open}
-    <ul
-      class="z-5000 flex max-h-[300px] flex-col overflow-hidden rounded-lg"
-      use:melt={$menu}
-      transition:fly={{ duration: 150, y: -5 }}
-    >
-      <!-- svelte-ignore a11y_no_noninteractive_tabindex -->
-      <div
-        use:autoAnimate
-        class="flex max-h-full flex-col gap-1 overflow-y-auto bg-popover text-card-foreground"
-        tabindex="0"
-      >
-        {#each filtered as entry}
-          <li
-            use:melt={$option({
-              value: entry,
-              label: entry,
-            })}
-            class="relative cursor-pointer scroll-my-2 rounded-md p-2 dark:bg-dark-1 border data-highlighted:bg-zinc-300 dark:data-highlighted:bg-dark-2"
-          >
-            <span class="truncate">{entry}</span>
-          </li>
-        {:else}
-          <li
-            class="relative cursor-pointer scroll-my-2 rounded-md p-2
-        bg-popover dark:bg-dark-1 border"
-          >
-            {#if $inputValue}
-              No timezones found.
-            {:else}
-              Start typing to search...
-            {/if}
-          </li>
-        {/each}
-      </div>
-    </ul>
-  {/if}
-  <Form.FieldErrors />
-</Form.Field>
