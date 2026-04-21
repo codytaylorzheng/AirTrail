@@ -1,7 +1,7 @@
 import type { PageServerLoad, Actions } from './$types';
 import { trpcServer } from '$lib/server/server';
 import { fail } from '@sveltejs/kit';
-import { database } from '$lib/db'; 
+import { db as database } from "$lib/db";
 import { createClient } from '@supabase/supabase-js';
 import { env } from '$env/dynamic/private';
 import { PUBLIC_SUPABASE_URL } from '$env/static/public';
