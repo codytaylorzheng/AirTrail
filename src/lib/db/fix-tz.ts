@@ -1,5 +1,5 @@
 import { find } from 'geo-tz';
-import { db } from './src/lib/db'; 
+import { db } from './index'; 
 
 async function runFix() {
   console.log("🛠️ Starting internal timezone fix...");
