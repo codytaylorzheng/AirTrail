@@ -30,10 +30,11 @@
   import { countryFromAlpha2 } from '$lib/utils/data/countries';
   import type { airportSchema } from '$lib/zod/airport';
 
-  const { form }: { form: SuperForm<Infer<typeof airportSchema>> } = $props();
+  const { form: superForm }: { form: SuperForm<Infer<typeof airportSchema>> } = $props();
 
-  const { form: formData, errors } = form;
-  const unregisterPmtiles = browser ? registerPmtilesProtocol() : null;
+  // Reference the stores directly from the superForm prop to keep them reactive
+  const formData = superForm.form;
+  const errors = superForm.errors;
 
   onDestroy(() => unregisterPmtiles?.());
 
