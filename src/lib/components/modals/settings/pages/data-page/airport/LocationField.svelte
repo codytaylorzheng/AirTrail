@@ -32,9 +32,8 @@
 
   const { form: superForm }: { form: SuperForm<Infer<typeof airportSchema>> } = $props();
 
-  // Create local aliases for the stores to keep the template readable
-  const formData = superForm.form;
-  const errors = superForm.errors;
+  const formData = $derived(superForm.form);
+  const errors = $derived(superForm.errors);
 
   const unregisterPmtiles = browser ? registerPmtilesProtocol() : null;
   onDestroy(() => unregisterPmtiles?.());
@@ -48,10 +47,7 @@
   let marker: LngLatLike | null = $state(
     !$formData.lon && !$formData.lat
       ? null
-      : {
-          lng: $formData.lon,
-          lat: $formData.lat,
-        },
+      : { lng: $formData.lon, lat: $formData.lat },
   );
 
   const markLocation = (e: maplibregl.MapMouseEvent) => {
@@ -69,11 +65,10 @@
   };
 </script>
 
-<span
-  class={cn('text-sm font-medium leading-none', {
-    'text-destructive': $errors.lat || $errors.lon,
-  })}>Location *</span
->
+<span class={cn('text-sm font-medium leading-none', { 'text-destructive': $errors.lat || $errors.lon })}>
+  Location *
+</span>
+
 <MapLibre
   bind:map
   onclick={markLocation}
@@ -95,14 +90,13 @@
   <GeolocateControl />
   <FullscreenControl position="top-right" />
 </MapLibre>
+
 <div class="text-muted-foreground text-sm">
-  Click on the map to set the location of the airport. Drag the marker to adjust
-  the location.
+  Click on the map to set the location of the airport. Drag the marker to adjust the location.
 </div>
+
 {#if $errors.lat || $errors.lon}
-  <div class="text-destructive text-sm font-medium">
-    Please select a location on the map.
-  </div>
+  <div class="text-destructive text-sm font-medium">Please select a location on the map.</div>
 {/if}
 
 <section class="grid grid-cols-1 gap-2 sm:grid-cols-2">
@@ -110,15 +104,9 @@
     <Form.Control>
       {#snippet children({ props })}
         <Form.Label>Country *</Form.Label>
-        <Select.Root
-          bind:value={$formData.country}
-          name={props.name}
-          type="single"
-        >
+        <Select.Root bind:value={$formData.country} name={props.name} type="single">
           <Select.Trigger {...props}>
-            {$formData.country
-              ? countryFromAlpha2($formData.country)?.name
-              : 'Select a country'}
+            {$formData.country ? countryFromAlpha2($formData.country)?.name : 'Select a country'}
           </Select.Trigger>
           <Select.Content>
             {#each COUNTRIES as country}
@@ -130,19 +118,14 @@
     </Form.Control>
     <Form.FieldErrors />
   </Form.Field>
+
   <Form.Field form={superForm} name="continent">
     <Form.Control>
       {#snippet children({ props })}
         <Form.Label>Continent *</Form.Label>
-        <Select.Root
-          bind:value={$formData.continent}
-          name={props.name}
-          type="single"
-        >
+        <Select.Root bind:value={$formData.continent} name={props.name} type="single">
           <Select.Trigger {...props}>
-            {$formData.continent
-              ? ContinentMap[$formData.continent]
-              : 'Select a continent'}
+            {$formData.continent ? ContinentMap[$formData.continent] : 'Select a continent'}
           </Select.Trigger>
           <Select.Content>
             {#each Continents as continent}
