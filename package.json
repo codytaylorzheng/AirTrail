@@ -62,6 +62,7 @@
     "@o7/icon": "^0.3.76",
     "@oslojs/encoding": "^1.1.0",
     "@playwright/test": "^1.57.0",
+    "@supabase/supabase-js": "^2.42.7",
     "@sveltejs/adapter-auto": "^7.0.0",
     "@sveltejs/adapter-node": "^5.5.4",
     "@sveltejs/kit": "^2.55.0",
