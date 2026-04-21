@@ -1,11 +1,14 @@
 import type { PageServerLoad, Actions } from './$types';
 import { trpcServer } from '$lib/server/server';
 import { fail } from '@sveltejs/kit';
-import { supabase } from '$lib/server/supabase'; 
-import { database } from '$lib/server/db'; 
+import { database } from '$lib/db'; 
+import { createClient } from '@supabase/supabase-js';
+import { env } from '$env/dynamic/private';
+import { PUBLIC_SUPABASE_URL } from '$env/static/public';
 
 export const load: PageServerLoad = async (event) => {
-  await trpcServer.flight.list.ssr({ scope: 'mine' }, event);
+  // Your existing load logic
+  await trpcServer.airline.list.ssr(event); 
 };
 
 export const actions: Actions = {
@@ -14,38 +17,32 @@ export const actions: Actions = {
     const file = formData.get('logo') as File;
     const airlineIcao = formData.get('icao') as string;
 
-    if (!file || file.size === 0) {
-      return fail(400, { error: 'No file selected' });
-    }
+    if (!file || file.size === 0) return fail(400, { error: 'No file' });
 
-    // 1. Upload to Supabase Storage
-    // We name the file using the ICAO (e.g., EMC.png)
+    // Initialize Supabase on the fly
+    const supabase = createClient(
+      PUBLIC_SUPABASE_URL, 
+      env.SUPABASE_SERVICE_ROLE_KEY || ''
+    );
+
     const filePath = `logos/${airlineIcao}.png`;
     
-    const { data, error: uploadError } = await supabase.storage
+    const { error: uploadError } = await supabase.storage
       .from('airline-logos')
-      .upload(filePath, file, {
-        upsert: true, // Overwrites if you upload a new version
-        contentType: file.type
-      });
+      .upload(filePath, file, { upsert: true, contentType: file.type });
 
-    if (uploadError) {
-      console.error('Upload Error:', uploadError);
-      return fail(500, { error: 'Storage upload failed' });
-    }
+    if (uploadError) return fail(500, { error: 'Upload failed' });
 
-    // 2. Get the Public URL
     const { data: { publicUrl } } = supabase.storage
       .from('airline-logos')
       .getPublicUrl(filePath);
 
-    // 3. Update the 'icon_path' column in your DB
     await database
       .updateTable('airline')
       .set({ icon_path: publicUrl }) 
       .where('icao', '=', airlineIcao)
       .execute();
 
-    return { success: true, url: publicUrl };
+    return { success: true };
   }
 };
