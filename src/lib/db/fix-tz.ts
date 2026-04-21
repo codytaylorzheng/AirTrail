@@ -1,19 +1,31 @@
 import { find } from 'geo-tz';
-import { db } from './index'; 
+import { Kysely, PostgresDialect } from 'kysely';
+import pg from 'pg';
+// Import only the TYPE, not the actual DB object
+import type { DB } from './index'; 
 
 async function runFix() {
-  console.log("🛠️ Starting internal timezone fix...");
-  
+  console.log("🛠️ Starting independent timezone fix...");
+
+  // Manually create a DB connection to bypass SvelteKit $env
+  const database = new Kysely<DB>({
+    dialect: new PostgresDialect({
+      pool: new pg.Pool({
+        connectionString: process.env.DATABASE_URL,
+      }),
+    }),
+  });
+
   try {
-    const airports = await db
+    const airports = await database
       .selectFrom('airport')
       .select(['id', 'lat', 'lon', 'icao'])
       .where('tz', 'like', 'Etc/GMT%')
-      .limit(5000) // Process in chunks to avoid Render timeouts
+      .limit(5000) 
       .execute();
 
     if (airports.length === 0) {
-      console.log("✅ No placeholder timezones found. Database is clean!");
+      console.log("✅ No placeholders found!");
       return;
     }
 
@@ -22,7 +34,7 @@ async function runFix() {
     for (const airport of airports) {
       const [realTz] = find(airport.lat, airport.lon);
       if (realTz) {
-        await db
+        await database
           .updateTable('airport')
           .set({ tz: realTz })
           .where('id', '=', airport.id)
@@ -32,6 +44,8 @@ async function runFix() {
     console.log("🚀 Chunk complete!");
   } catch (err) {
     console.error("❌ Fix failed:", err);
+  } finally {
+    await database.destroy(); // Close the pool
   }
 }
 
