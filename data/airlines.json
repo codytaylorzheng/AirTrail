@@ -3927,6 +3927,13 @@
     "defunct": false
   },
   {
+    "id": "cathay-dragon",
+    "name": "Cathay Dragon",
+    "icao": "HDA",
+    "iata": "KA*",
+    "defunct": true
+  }
+  {
     "id": "catreus",
     "name": "Catreus",
     "icao": "VCG",
