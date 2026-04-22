@@ -3,8 +3,15 @@ import { trpcServer } from '$lib/server/server';
 import { fail } from '@sveltejs/kit';
 import { db as database } from "$lib/db";
 import { createClient } from '@supabase/supabase-js';
-import { env } from '$env/dynamic/private';
+// Change this:
+// import { env } from '$env/dynamic/private';
+
+// To this:
+import { SUPABASE_SERVICE_ROLE_KEY } from '$env/static/private';
 import { PUBLIC_SUPABASE_URL } from '$env/static/public';
+
+// Use them directly:
+const supabase = createClient(PUBLIC_SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
 export const load: PageServerLoad = async (event) => {
     // Standard AirTrail load logic
