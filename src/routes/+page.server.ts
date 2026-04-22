@@ -28,7 +28,7 @@ export const actions: Actions = {
 
         // 2. Initialize Supabase
         // Note: Ensure Render has PUBLIC_SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY
-        const supabaseUrl = PUBLIC_SUPABASE_URL;
+        const supabaseUrl = env.PUBLIC_SUPABASE_URL;
         const supabaseKey = env.SUPABASE_SERVICE_ROLE_KEY;
 
         if (!supabaseUrl || !supabaseKey) {
