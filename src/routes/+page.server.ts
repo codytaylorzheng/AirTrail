@@ -7,6 +7,7 @@ import { SUPABASE_SERVICE_ROLE_KEY } from '$env/static/private';
 import { PUBLIC_SUPABASE_URL } from '$env/static/public';
 
 export const load: PageServerLoad = async (event) => {
+    // Keep your TRPC logic for loading the list
     await trpcServer.airline.list.ssr(event); 
 };
 
@@ -16,35 +17,62 @@ export const actions: Actions = {
         const file = formData.get('logo') as File;
         const airlineIcao = formData.get('icao') as string;
 
-        if (!file || file.size === 0) return fail(400, { error: 'No file' });
-
-        // IMPORTANT: Initialize INSIDE the action so it doesn't crash the build
-        const supabase = createClient(PUBLIC_SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
-
-        const filePath = `airline/${airlineIcao}.png`;
-        
-        const { error: uploadError } = await supabase.storage
-            .from('airline-logos')
-            .upload(filePath, await file.arrayBuffer(), { // Added await file.arrayBuffer()
-                upsert: true, 
-                contentType: file.type 
-            });
-
-        if (uploadError) {
-            console.error('Upload Error:', uploadError.message);
-            return fail(500, { error: uploadError.message });
+        // 1. Validation
+        if (!file || file.size === 0) {
+            return fail(400, { error: 'No file provided' });
         }
 
-        const { data: { publicUrl } } = supabase.storage
-            .from('airline-logos')
-            .getPublicUrl(filePath);
+        if (!airlineIcao) {
+            return fail(400, { error: 'Airline ICAO is required' });
+        }
 
-        await database
-            .updateTable('airline')
-            .set({ icon_path: publicUrl }) 
-            .where('icao', '=', airlineIcao)
-            .execute();
+        // 2. Initialize Supabase Client
+        // Note: Using the SERVICE_ROLE_KEY bypasses RLS policies. 
+        // If this still fails, the bucket name is likely incorrect.
+        const supabase = createClient(PUBLIC_SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
-        return { success: true };
+        const fileExt = file.name.split('.').pop();
+        const filePath = `airline/${airlineIcao}.${fileExt || 'png'}`;
+        
+        console.log(`Attempting upload to Supabase: ${filePath} (${file.type})`);
+
+        try {
+            // 3. Upload to Supabase Storage
+            const { data: uploadData, error: uploadError } = await supabase.storage
+                .from('airline-logos') // Ensure this bucket ID is exactly 'airline-logos'
+                .upload(filePath, await file.arrayBuffer(), {
+                    upsert: true, 
+                    contentType: file.type || 'image/png' 
+                });
+
+            if (uploadError) {
+                console.error('Supabase Storage Error:', uploadError.message);
+                return fail(500, { error: `Storage Error: ${uploadError.message}` });
+            }
+
+            // 4. Get the Public URL
+            const { data: { publicUrl } } = supabase.storage
+                .from('airline-logos')
+                .getPublicUrl(filePath);
+
+            console.log('Upload successful. Public URL:', publicUrl);
+
+            // 5. Update the Database
+            const result = await database
+                .updateTable('airline')
+                .set({ icon_path: publicUrl }) 
+                .where('icao', '=', airlineIcao)
+                .executeTakeFirst();
+
+            if (!result) {
+                console.warn(`Database update failed for ICAO: ${airlineIcao}`);
+            }
+
+            return { success: true, url: publicUrl };
+
+        } catch (err) {
+            console.error('Unexpected server error during upload:', err);
+            return fail(500, { error: 'An unexpected error occurred.' });
+        }
     }
 };
