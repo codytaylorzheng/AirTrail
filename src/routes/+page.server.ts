@@ -21,11 +21,14 @@ export const actions: Actions = {
         // IMPORTANT: Initialize INSIDE the action so it doesn't crash the build
         const supabase = createClient(PUBLIC_SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
-        const filePath = `logos/${airlineIcao}.png`;
+        const filePath = `airline/${airlineIcao}.png`;
         
         const { error: uploadError } = await supabase.storage
             .from('airline-logos')
-            .upload(filePath, file, { upsert: true, contentType: file.type });
+            .upload(filePath, await file.arrayBuffer(), { // Added await file.arrayBuffer()
+                upsert: true, 
+                contentType: file.type 
+            });
 
         if (uploadError) {
             console.error('Upload Error:', uploadError.message);
