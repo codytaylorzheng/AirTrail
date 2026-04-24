@@ -7,72 +7,75 @@ import { SUPABASE_SERVICE_ROLE_KEY } from '$env/static/private';
 import { PUBLIC_SUPABASE_URL } from '$env/static/public';
 
 export const load: PageServerLoad = async (event) => {
-    // Keep your TRPC logic for loading the list
     await trpcServer.airline.list.ssr(event); 
 };
 
 export const actions: Actions = {
     uploadLogo: async ({ request }) => {
+        console.log('--- Action: uploadLogo triggered ---');
+        
         const formData = await request.formData();
         const file = formData.get('logo') as File;
         const airlineIcao = formData.get('icao') as string;
 
+        console.log(`Received: ICAO=${airlineIcao}, File=${file?.name}, Size=${file?.size}`);
+
         // 1. Validation
         if (!file || file.size === 0) {
+            console.error('Validation failed: No file');
             return fail(400, { error: 'No file provided' });
         }
 
         if (!airlineIcao) {
+            console.error('Validation failed: No ICAO');
             return fail(400, { error: 'Airline ICAO is required' });
         }
 
-        // 2. Initialize Supabase Client
-        // Note: Using the SERVICE_ROLE_KEY bypasses RLS policies. 
-        // If this still fails, the bucket name is likely incorrect.
+        // 2. Initialize Supabase
         const supabase = createClient(PUBLIC_SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
-
-        const fileExt = file.name.split('.').pop();
-        const filePath = `airline/${airlineIcao}.${fileExt || 'png'}`;
+        const fileExt = file.name.split('.').pop() || 'png';
+        const filePath = `airline/${airlineIcao}.${fileExt}`;
         
-        console.log(`Attempting upload to Supabase: ${filePath} (${file.type})`);
-
         try {
-            // 3. Upload to Supabase Storage
+            // Convert to Buffer for reliable Node.js upload
+            const arrayBuffer = await file.arrayBuffer();
+            const buffer = Buffer.from(arrayBuffer);
+
+            console.log(`Uploading to bucket "airline-logos" at path: ${filePath}`);
+
             const { data: uploadData, error: uploadError } = await supabase.storage
-                .from('airline-logos') // Ensure this bucket ID is exactly 'airline-logos'
-                .upload(filePath, await file.arrayBuffer(), {
-                    upsert: true, 
-                    contentType: file.type || 'image/png' 
+                .from('airline-logos')
+                .upload(filePath, buffer, {
+                    upsert: true,
+                    contentType: file.type || 'image/png'
                 });
 
             if (uploadError) {
                 console.error('Supabase Storage Error:', uploadError.message);
-                return fail(500, { error: `Storage Error: ${uploadError.message}` });
+                return fail(500, { error: uploadError.message });
             }
 
-            // 4. Get the Public URL
+            // 3. Get Public URL
             const { data: { publicUrl } } = supabase.storage
                 .from('airline-logos')
                 .getPublicUrl(filePath);
 
-            console.log('Upload successful. Public URL:', publicUrl);
+            console.log('Upload success. Public URL:', publicUrl);
 
-            // 5. Update the Database
+            // 4. Update Database
             const result = await database
                 .updateTable('airline')
                 .set({ icon_path: publicUrl }) 
                 .where('icao', '=', airlineIcao)
                 .executeTakeFirst();
 
-            if (!result) {
-                console.warn(`Database update failed for ICAO: ${airlineIcao}`);
-            }
+            console.log('Database update result:', result);
 
             return { success: true, url: publicUrl };
 
         } catch (err) {
-            console.error('Unexpected server error during upload:', err);
-            return fail(500, { error: 'An unexpected error occurred.' });
+            console.error('Unexpected crash in uploadLogo:', err);
+            return fail(500, { error: 'Internal Server Error' });
         }
     }
 };
