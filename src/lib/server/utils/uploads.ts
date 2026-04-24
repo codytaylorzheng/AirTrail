@@ -1,4 +1,4 @@
-import { env } from '$env/dynamic/private';
+import { env } from '$env/static/private';
 
 import * as fs from 'node:fs';
 import * as path from 'node:path';
@@ -19,21 +19,11 @@ class UploadManager {
 
   async init(): Promise<void> {
     this.#uploadLocation = env.UPLOAD_LOCATION || null;
-
-    if (!this.#uploadLocation) {
-      console.warn('UPLOAD_LOCATION not set. File uploads will be disabled.');
-      return;
-    }
-
     this.#isConfigured = true;
 
     try {
       // Check if directory exists
       if (!fs.existsSync(this.#uploadLocation)) {
-        console.warn(
-          `UPLOAD_LOCATION "${this.#uploadLocation}" does not exist. File uploads will fail.`,
-        );
-        return;
       }
 
       // Check read/write permissions by attempting to create and delete a test file
@@ -44,9 +34,6 @@ class UploadManager {
       this.#isReady = true;
       console.log(`Upload location configured: ${this.#uploadLocation}`);
     } catch (err) {
-      console.warn(
-        `UPLOAD_LOCATION "${this.#uploadLocation}" is not readable/writable. File uploads will fail.`,
-        err,
       );
     }
   }
