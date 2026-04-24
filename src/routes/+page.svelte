@@ -246,3 +246,5 @@
 />
 
 <Map bind:filters bind:tempFilters {flights} {filteredFlights} />
+import { enhance } from '$app/forms';
+let { data, form } = $props(); // 'form' captures the result of the action
