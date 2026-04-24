@@ -7,75 +7,54 @@ import { SUPABASE_SERVICE_ROLE_KEY } from '$env/static/private';
 import { PUBLIC_SUPABASE_URL } from '$env/static/public';
 
 export const load: PageServerLoad = async (event) => {
+    // Keep your existing load logic
     await trpcServer.airline.list.ssr(event); 
+    return {
+        user: event.locals.user // Ensure user data is passed if needed
+    };
 };
 
 export const actions: Actions = {
+    // This is the new action you are adding
     uploadLogo: async ({ request }) => {
         console.log('--- Action: uploadLogo triggered ---');
-        
         const formData = await request.formData();
         const file = formData.get('logo') as File;
         const airlineIcao = formData.get('icao') as string;
 
-        console.log(`Received: ICAO=${airlineIcao}, File=${file?.name}, Size=${file?.size}`);
-
-        // 1. Validation
-        if (!file || file.size === 0) {
-            console.error('Validation failed: No file');
-            return fail(400, { error: 'No file provided' });
+        if (!file || file.size === 0 || !airlineIcao) {
+            return fail(400, { error: 'Missing file or ICAO' });
         }
 
-        if (!airlineIcao) {
-            console.error('Validation failed: No ICAO');
-            return fail(400, { error: 'Airline ICAO is required' });
-        }
-
-        // 2. Initialize Supabase
         const supabase = createClient(PUBLIC_SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
         const fileExt = file.name.split('.').pop() || 'png';
-        const filePath = `airline/${airlineIcao}.${fileExt}`;
+        const filePath = `airline/${airlineIcao.toUpperCase()}.${fileExt}`;
         
         try {
-            // Convert to Buffer for reliable Node.js upload
-            const arrayBuffer = await file.arrayBuffer();
-            const buffer = Buffer.from(arrayBuffer);
-
-            console.log(`Uploading to bucket "airline-logos" at path: ${filePath}`);
-
-            const { data: uploadData, error: uploadError } = await supabase.storage
+            const buffer = Buffer.from(await file.arrayBuffer());
+            const { error: uploadError } = await supabase.storage
                 .from('airline-logos')
                 .upload(filePath, buffer, {
                     upsert: true,
                     contentType: file.type || 'image/png'
                 });
 
-            if (uploadError) {
-                console.error('Supabase Storage Error:', uploadError.message);
-                return fail(500, { error: uploadError.message });
-            }
+            if (uploadError) return fail(500, { error: uploadError.message });
 
-            // 3. Get Public URL
             const { data: { publicUrl } } = supabase.storage
                 .from('airline-logos')
                 .getPublicUrl(filePath);
 
-            console.log('Upload success. Public URL:', publicUrl);
-
-            // 4. Update Database
-            const result = await database
+            await database
                 .updateTable('airline')
                 .set({ icon_path: publicUrl }) 
-                .where('icao', '=', airlineIcao)
+                .where('icao', '=', airlineIcao.toUpperCase())
                 .executeTakeFirst();
 
-            console.log('Database update result:', result);
-
             return { success: true, url: publicUrl };
-
         } catch (err) {
-            console.error('Unexpected crash in uploadLogo:', err);
-            return fail(500, { error: 'Internal Server Error' });
+            console.error(err);
+            return fail(500, { error: 'Server error' });
         }
     }
 };
