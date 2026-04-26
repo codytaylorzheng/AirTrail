@@ -26,20 +26,17 @@ export const POST: RequestHandler = async ({ locals, request }) => {
     return json({ error: 'Invalid file or size' }, { status: 400 });
   }
 
-  // Initialize Supabase Client
   const supabase = createClient(
     publicEnv.PUBLIC_SUPABASE_URL, 
     privateEnv.SUPABASE_SERVICE_ROLE_KEY
   );
 
   const ext = ALLOWED_IMAGE_EXTENSIONS[typeIndex];
-  // Path as per Supabase AI suggestion: airlines/[ID].[ext]
   const filePath = `airlines/${airlineId}${ext}`;
 
   try {
     const buffer = Buffer.from(await file.arrayBuffer());
 
-    // 1. Upload to Supabase Storage
     const { error: uploadError } = await supabase.storage
       .from('airline-logos')
       .upload(filePath, buffer, {
@@ -49,10 +46,8 @@ export const POST: RequestHandler = async ({ locals, request }) => {
 
     if (uploadError) throw uploadError;
 
-    // 2. Construct Public URL
     const publicUrl = `${publicEnv.PUBLIC_SUPABASE_URL}/storage/v1/object/public/airline-logos/${filePath}`;
 
-    // 3. Update Database (AirTrail uses iconPath column)
     await db
       .updateTable('airline')
       .set({ iconPath: publicUrl })
@@ -75,7 +70,6 @@ export const DELETE: RequestHandler = async ({ locals, request }) => {
 
   if (airline?.iconPath) {
     const supabase = createClient(publicEnv.PUBLIC_SUPABASE_URL, privateEnv.SUPABASE_SERVICE_ROLE_KEY);
-    // Extract relative path from URL to delete from storage
     const pathParts = airline.iconPath.split('/airline-logos/');
     if (pathParts[1]) {
       await supabase.storage.from('airline-logos').remove([pathParts[1]]);
