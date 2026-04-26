@@ -32,7 +32,7 @@
 
   // Convert string dates to DateValue for the component
   let dateRange: { start: DateValue | undefined; end: DateValue | undefined } =
-    $state({
+    $derived({
       start: $formData[startName] ? parseDate($formData[startName]) : undefined,
       end: $formData[endName] ? parseDate($formData[endName]) : undefined,
     });
